@@ -1,0 +1,143 @@
+-- Create Database
+CREATE DATABASE IF NOT EXISTS HRMS_DB;
+USE HRMS_DB;
+
+-- Users Table (All Users)
+CREATE TABLE Users (
+    user_id INT AUTO_INCREMENT PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password_hash VARCHAR(255) NOT NULL,
+    role ENUM('HR Manager', 'Employee', 'Manager', 'IT Admin', 'Payroll Officer') NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Employee Table
+CREATE TABLE Employees (
+    employee_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT UNIQUE,
+    department VARCHAR(100),
+    job_title VARCHAR(100),
+    salary DECIMAL(10,2),
+    hire_date DATE,
+    status ENUM('Active', 'Inactive') DEFAULT 'Active',
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE CASCADE
+);
+
+-- Attendance Table
+CREATE TABLE Attendance (
+    attendance_id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_id INT,
+    date DATE NOT NULL,
+    check_in TIME,
+    check_out TIME,
+    status ENUM('Present', 'Absent', 'On Leave') DEFAULT 'Present',
+    FOREIGN KEY (employee_id) REFERENCES Employees(employee_id) ON DELETE CASCADE
+);
+
+-- Leave Requests Table
+CREATE TABLE LeaveRequests (
+    leave_id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_id INT,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    leave_type ENUM('Sick Leave', 'Vacation', 'Unpaid Leave') NOT NULL,
+    status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+    applied_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (employee_id) REFERENCES Employees(employee_id) ON DELETE CASCADE
+);
+
+-- Payroll Table
+CREATE TABLE Payroll (
+    payroll_id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_id INT,
+    month_year VARCHAR(7) NOT NULL,  -- Format: YYYY-MM
+    base_salary DECIMAL(10,2),
+    overtime DECIMAL(10,2) DEFAULT 0,
+    deductions DECIMAL(10,2) DEFAULT 0,
+    net_salary DECIMAL(10,2) AS (base_salary + overtime - deductions) STORED,
+    processed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (employee_id) REFERENCES Employees(employee_id) ON DELETE CASCADE
+);
+
+-- Performance Evaluation Table
+CREATE TABLE PerformanceEvaluations (
+    evaluation_id INT AUTO_INCREMENT PRIMARY KEY,
+    employee_id INT,
+    reviewer_id INT,  -- Manager/HR who reviewed
+    rating INT CHECK (rating BETWEEN 1 AND 5),
+    feedback TEXT,
+    evaluation_date DATE NOT NULL,
+    FOREIGN KEY (employee_id) REFERENCES Employees(employee_id) ON DELETE CASCADE,
+    FOREIGN KEY (reviewer_id) REFERENCES Users(user_id) ON DELETE SET NULL
+);
+
+-- Recruitment Table
+CREATE TABLE JobPostings (
+    job_id INT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(100),
+    department VARCHAR(100),
+    description TEXT,
+    posted_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE Applications (
+    application_id INT AUTO_INCREMENT PRIMARY KEY,
+    job_id INT,
+    applicant_name VARCHAR(100),
+    email VARCHAR(100),
+    resume_link VARCHAR(255),
+    status ENUM('Applied', 'Interview Scheduled', 'Rejected', 'Hired') DEFAULT 'Applied',
+    applied_on TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (job_id) REFERENCES JobPostings(job_id) ON DELETE CASCADE
+);
+
+-- Security & Access Control Table
+CREATE TABLE AuditLogs (
+    log_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT,
+    action VARCHAR(255),
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES Users(user_id) ON DELETE SET NULL
+);
+
+-- Insert Dummy Users
+INSERT INTO Users (full_name, email, password_hash, role) VALUES
+('John Doe', 'john@example.com', 'hashed_password_1', 'HR Manager'),
+('Jane Smith', 'jane@example.com', 'hashed_password_2', 'Employee'),
+('Robert Brown', 'robert@example.com', 'hashed_password_3', 'Manager');
+
+-- Insert Dummy Employees
+INSERT INTO Employees (user_id, department, job_title, salary, hire_date) VALUES
+(2, 'IT', 'Software Engineer', 60000, '2023-05-10'),
+(3, 'Finance', 'Finance Manager', 75000, '2022-08-20');
+
+-- Insert Dummy Attendance
+INSERT INTO Attendance (employee_id, date, check_in, check_out, status) VALUES
+(1, '2025-02-25', '09:00:00', '17:00:00', 'Present'),
+(2, '2025-02-25', NULL, NULL, 'Absent');
+
+-- Insert Dummy Leave Requests
+INSERT INTO LeaveRequests (employee_id, start_date, end_date, leave_type, status) VALUES
+(1, '2025-03-01', '2025-03-05', 'Vacation', 'Pending');
+
+-- Insert Dummy Payroll Data
+INSERT INTO Payroll (employee_id, month_year, base_salary, overtime, deductions) VALUES
+(1, '2025-02', 60000, 5000, 2000),
+(2, '2025-02', 75000, 3000, 2500);
+
+-- Insert Dummy Performance Evaluations
+INSERT INTO PerformanceEvaluations (employee_id, reviewer_id, rating, feedback, evaluation_date) VALUES
+(1, 3, 4, 'Great work on the last project!', '2025-02-20');
+
+-- Insert Dummy Job Postings
+INSERT INTO JobPostings (title, department, description) VALUES
+('Data Analyst', 'IT', 'Looking for an experienced Data Analyst to join our team.');
+
+-- Insert Dummy Applications
+INSERT INTO Applications (job_id, applicant_name, email, resume_link, status) VALUES
+(1, 'Alice Johnson', 'alice@example.com', 'link_to_resume.pdf', 'Applied');
+
+-- Insert Dummy Audit Log
+INSERT INTO AuditLogs (user_id, action) VALUES
+(1, 'Logged into the system');
